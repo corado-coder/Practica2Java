@@ -8,5 +8,4 @@ public class Main {
 		Manager manager = Manager.getInstance();
 		manager.init();
 	}
-
 }

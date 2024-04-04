@@ -40,11 +40,12 @@ public class Manager {
 	}
 
 	public void init() {
-		createSession();
-		getEntrada();
-		manageActions();
-		showAllCampos();
-		session.close();
+	    createSession();
+	    getEntrada();
+	    manageActions();
+	    showAllCampos();
+	    showCantidadVidByCampo();
+	    session.close();
 	}
 
 	private void manageActions() {
@@ -77,12 +78,14 @@ public class Manager {
 	}
 
 	private void vendimia() {
-		this.b.getVids().addAll(this.c.getVids());
-		
-		tx = session.beginTransaction();
-		session.save(b);
-		
-		tx.commit();
+	    this.b.getVids().addAll(this.c.getVids());
+	    
+	    tx = session.beginTransaction();
+	    session.save(b);
+	    this.c.getVids().clear();
+	    session.update(c); 
+	    
+	    tx.commit();
 	}
 
 	private void addVid(String[] split) {
@@ -108,7 +111,7 @@ public class Manager {
 	}
 
 	private void addBodega(String[] split) {
-		b = new Bodega(split[1]);
+		b = new Bodega(split[1], null);
 		tx = session.beginTransaction();
 		
 		int id = (Integer) session.save(b);
@@ -133,6 +136,18 @@ public class Manager {
 			System.out.println(c);
 		}
 		tx.commit();
+	}
+	
+	private void showCantidadVidByCampo() {
+	    tx = session.beginTransaction();
+	    Query q = session.createQuery("select c, count(v) from Campo c join c.vids v group by c");
+	    List<Object[]> resultList = q.list();
+	    for (Object[] result : resultList) {
+	        Campo campo = (Campo) result[0];
+	        Long cantidad = (Long) result[1];
+	        System.out.println("Campo: " + campo.getId_campo() + ", Cantidad de Vids: " + cantidad);
+	    }
+	    tx.commit();
 	}
 
 	
