@@ -5,12 +5,14 @@ import java.util.List;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 import org.hibernate.HibernateException;
 
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.UpdateResult;
@@ -64,10 +66,13 @@ public class Manager {
                     	addWinery(entrada.getInstruccion().split(" "));
                         break;
                     case "C":
-                        addCampo(entrada.getInstruccion().split(" "));
+                        addCampo(entrada.getInstruccion().split(" "), false);
                         break;
                     case "V":
                         addVid(entrada.getInstruccion().split(" "));
+                        break;
+                    case "M":
+                        markAsVendimiado(entrada.getInstruccion().split(" "));
                         break;
                     case "#":
                         vendimia();
@@ -111,23 +116,24 @@ public class Manager {
         }
     }
     
-    private void addCampo(String[] split) {
+    private void addCampo(String[] split, boolean vendimiado) {
         try {
-            String lastBodegaId = getLastBodegaId(); 
+            String lastBodegaId = getLastBodegaId();
             Document document = new Document();
+            document.put("vendimiado", vendimiado); // Establecer el valor de vendimiado
             collection = database.getCollection("campo");
             collection.insertOne(document);
             System.out.println("Campo agregado correctamente.");
             String nuevoCampoId = document.getObjectId("_id").toString();
             Campo nuevoCampo = new Campo();
             nuevoCampo.setId(nuevoCampoId);
+            nuevoCampo.setVendimiado(vendimiado); // Establecer el valor de vendimiado en el objeto Campo
             campos.add(nuevoCampo);
         } catch (Exception e) {
             System.out.println("Error al agregar el campo: " + e.getMessage());
             e.printStackTrace();
         }
     }
-
     private String getLastBodegaId() {
         MongoCollection<Document> bodegaCollection = database.getCollection("bodega");  
         Document lastBodega = bodegaCollection.find().sort(Sorts.descending("_id")).first();
@@ -189,6 +195,30 @@ public class Manager {
         Bson update = Updates.set("bodegaId", bodegaId);
         UpdateResult updateResult = vidCollection.updateMany(filter, update);
         System.out.println("Número de documentos de vid actualizados: " + updateResult.getModifiedCount());
+    }
+    private void markAsVendimiado(String[] parts) {
+        if (parts.length >= 2) {
+            String campoId = parts[1];
+           
+            // Crear el filtro para buscar el campo por su ID
+            Bson filter = Filters.eq("_id", new ObjectId(campoId));
+           
+            // Crear la actualización para establecer "vendimiado" en true
+            Bson update = Updates.set("vendimiado", true);
+           
+            // Ejecutar la actualización en la colección de campos
+            MongoCollection<Document> campoCollection = database.getCollection("campo");
+            UpdateResult updateResult = campoCollection.updateOne(filter, update);
+           
+            // Verificar si se realizó la actualización correctamente
+            if (updateResult.getModifiedCount() > 0) {
+                System.out.println("Campo marcado como vendimiado correctamente.");
+            } else {
+                System.out.println("No se encontró ningún campo con el ID proporcionado.");
+            }
+        } else {
+            System.out.println("La instrucción no tiene el formato esperado.");
+        }
     }
 }
 
